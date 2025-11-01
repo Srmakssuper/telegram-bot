@@ -5,7 +5,8 @@ import requests
 
 BOT_TOKEN = "8191155033:AAHXqDCDxZVfHOhQ16WjGMIvGweFwUueh6M"
 CHANNEL_URL = "https://t.me/SH_Trading_academy"
-PHOTO_URL = "https://ibb.co.com/0RCVWmyb"  # ⬅️ ЗАМЕНИТЕ НА ССЫЛКУ ВАШЕГО ФОТО
+PHOTO_URL = "https://ibb.co.com/0RCVWmyb"
+RISK_PHOTO_URL = "https://img.icons8.com/clouds/1000/security-checked.png"
 
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -40,11 +41,13 @@ class Handler(BaseHTTPRequestHandler):
             text = update['message'].get('text', '')
             
             if text == '/start':
-                self.send_telegram_photo(chat_id,  # ⬅️ ИЗМЕНИЛИ НА ОТПРАВКУ ФОТО
-                    "🚀 *SH. Trading Academy* — команда профессионалов с 15-летним опытом торговли 💪\n"
-                    "💰 Делимся реальными сделками, в которые входим сами — АБСОЛЮТНО БЕСПЛАТНО!\n"
-                    "👇 Следите за нашими входами, учитесь и растите вместе с нами!", 
-                    True)
+                # ПЕРВОЕ сообщение - риск-дисклеймер
+                self.send_risk_disclaimer(chat_id)
+                
+            elif text == '/agree':
+                # Если пользователь согласился - отправляем основное предложение
+                self.send_main_offer(chat_id)
+                
             elif text in ['/help', '/info']:
                 self.send_telegram_message(chat_id,
                     "🤖 *Что умеет этот бот?*\n\n"
@@ -57,55 +60,90 @@ class Handler(BaseHTTPRequestHandler):
                     "Чтобы узнать, что я умею — напиши /help.\n"
                     "Чтобы начать — нажми /start 🚀")
 
-    def send_telegram_photo(self, chat_id, caption, with_button=False):
+    def send_risk_disclaimer(self, chat_id):
+        """Отправка риск-дисклеймера"""
+        markup = {
+            "inline_keyboard": [[
+                {
+                    "text": "✅ Я ОСОЗНАЮ РИСКИ И СОГЛАСЕН",
+                    "callback_data": "risk_accepted"
+                }
+            ]]
+        }
+        
+        # Сначала отправляем текст про риски
+        self.send_telegram_message(chat_id,
+            "🔐 *Важно: Осознание рисков трейдинга*\n\n"
+            "📊 **Прежде чем начать, подтвердите что понимаете:**\n"
+            "• Трейдинг связан с финансовыми рисками\n"
+            "• Вы берете ответственность за свои решения\n"
+            "• Риск-менеджмент — основа успеха\n"
+            "• Убыточные сделки — часть процесса\n\n"
+            "Нажмите кнопку ниже для подтверждения",
+            reply_markup=markup)
+        
+        # Затем отправляем фото с обучением
+        self.send_telegram_photo(chat_id,
+            "💰 *Основы риск-менеджмента:*\n\n"
+            "• Правило 1-2%: рискуйте не более 1-2% от депозита\n"
+            "• Соотношение 1:2: риск $10 → цель $20+\n"
+            "• Стоп-лосс: автоматическое ограничение убытков\n\n"
+            "💎 *Осознанная торговля — ключ к успеху!*",
+            photo_url=RISK_PHOTO_URL)
+
+    def send_main_offer(self, chat_id):
+        """Основное предложение после согласия"""
+        markup = {
+            "inline_keyboard": [[
+                {
+                    "text": "📲 Присоединиться к каналу",
+                    "url": CHANNEL_URL
+                }
+            ]]
+        }
+        
+        self.send_telegram_photo(chat_id,
+            "🚀 *Добро пожаловать в SH. Trading Academy!*\n\n"
+            "💎 **Что вы получаете:**\n"
+            "• Реальные сделки от профессионалов\n"
+            "• Обучение риск-менеджменту\n" 
+            "• Поддержку сообщества\n"
+            "• 15-летний опыт в вашем распоряжении\n\n"
+            "📈 *Начните свой путь к финансовой свободе!*",
+            photo_url=PHOTO_URL,
+            reply_markup=markup)
+
+    def send_telegram_photo(self, chat_id, caption, photo_url=None, reply_markup=None):
         """Отправка фото с подписью"""
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
         
-        reply_markup = None
-        if with_button:
-            reply_markup = {
-                "inline_keyboard": [[
-                    {
-                        "text": "📲 Присоединиться",
-                        "url": CHANNEL_URL
-                    }
-                ]]
-            }
-        
         data = {
             'chat_id': chat_id,
-            'photo': PHOTO_URL,  # ⬅️ ССЫЛКА НА ФОТО
-            'caption': caption,   # ⬅️ ТЕКСТ ПОД ФОТО
+            'photo': photo_url or PHOTO_URL,
+            'caption': caption,
             'parse_mode': 'Markdown',
-            'reply_markup': reply_markup
         }
+        
+        if reply_markup:
+            data['reply_markup'] = json.dumps(reply_markup)
         
         try:
             requests.post(url, json=data, timeout=10)
         except Exception as e:
             print(f"Error sending photo: {e}")
 
-    def send_telegram_message(self, chat_id, text, with_button=False):
+    def send_telegram_message(self, chat_id, text, reply_markup=None):
         """Отправка обычного текстового сообщения"""
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        
-        reply_markup = None
-        if with_button:
-            reply_markup = {
-                "inline_keyboard": [[
-                    {
-                        "text": "📲 Присоединиться",
-                        "url": CHANNEL_URL
-                    }
-                ]]
-            }
         
         data = {
             'chat_id': chat_id,
             'text': text,
             'parse_mode': 'Markdown',
-            'reply_markup': reply_markup
         }
+        
+        if reply_markup:
+            data['reply_markup'] = json.dumps(reply_markup)
         
         try:
             requests.post(url, json=data, timeout=10)
