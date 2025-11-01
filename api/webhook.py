@@ -6,7 +6,7 @@ import requests
 BOT_TOKEN = "8191155033:AAHXqDCDxZVfHOhQ16WjGMIvGweFwUueh6M"
 CHANNEL_URL = "https://t.me/SH_Trading_academy"
 PHOTO_URL = "https://ibb.co.com/0RCVWmyb"
-RISK_PHOTO_URL = "https://img.icons8.com/clouds/1000/security-checked.png"  # Фото для риск-менеджмента
+RISK_PHOTO_URL = "https://img.icons8.com/clouds/1000/security-checked.png"
 
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -14,6 +14,9 @@ class Handler(BaseHTTPRequestHandler):
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
             update = json.loads(post_data)
+            
+            # Логируем что пришло
+            print("📨 Received update:", json.dumps(update, indent=2))
             
             self.handle_update(update)
             
@@ -40,6 +43,7 @@ class Handler(BaseHTTPRequestHandler):
         if 'callback_query' in update:
             chat_id = update['callback_query']['message']['chat']['id']
             callback_data = update['callback_query']['data']
+            print(f"🔘 Callback received: {callback_data} from chat {chat_id}")
             
             if callback_data == 'learn_risk':
                 self.send_risk_education(chat_id)
@@ -51,13 +55,16 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_lesson_2(chat_id)
             elif callback_data == 'learn_3':
                 self.send_lesson_3(chat_id)
-                
+            
+            # Отвечаем на callback чтобы убрать "часики" у кнопки
+            self.answer_callback_query(update['callback_query']['id'])
             return
         
         # Обработка текстовых сообщений
         if 'message' in update:
             chat_id = update['message']['chat']['id']
             text = update['message'].get('text', '')
+            print(f"💬 Message received: {text} from chat {chat_id}")
             
             if text == '/start':
                 self.send_risk_disclaimer(chat_id)
@@ -72,6 +79,15 @@ class Handler(BaseHTTPRequestHandler):
                     "👋 Я бот *SH. Trading Academy*.\n\n"
                     "Чтобы узнать, что я умею — напиши /help.\n"
                     "Чтобы начать — нажми /start 🚀")
+
+    def answer_callback_query(self, callback_query_id):
+        """Отвечаем на callback query чтобы убрать часики"""
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerCallbackQuery"
+        data = {'callback_query_id': callback_query_id}
+        try:
+            requests.post(url, json=data, timeout=5)
+        except Exception as e:
+            print(f"Error answering callback: {e}")
 
     def send_risk_disclaimer(self, chat_id):
         """Отправка риск-дисклеймера с кнопками"""
@@ -231,13 +247,16 @@ class Handler(BaseHTTPRequestHandler):
             'photo': photo_url or PHOTO_URL,
             'caption': caption,
             'parse_mode': 'Markdown',
-            'reply_markup': json.dumps(reply_markup) if reply_markup else None
         }
         
+        if reply_markup:
+            data['reply_markup'] = json.dumps(reply_markup)
+        
         try:
-            requests.post(url, json=data, timeout=10)
+            response = requests.post(url, json=data, timeout=10)
+            print(f"📸 Photo sent to {chat_id}, response: {response.status_code}")
         except Exception as e:
-            print(f"Error sending photo: {e}")
+            print(f"❌ Error sending photo: {e}")
 
     def send_telegram_message(self, chat_id, text, reply_markup=None):
         """Отправка обычного текстового сообщения"""
@@ -247,13 +266,16 @@ class Handler(BaseHTTPRequestHandler):
             'chat_id': chat_id,
             'text': text,
             'parse_mode': 'Markdown',
-            'reply_markup': json.dumps(reply_markup) if reply_markup else None
         }
         
+        if reply_markup:
+            data['reply_markup'] = json.dumps(reply_markup)
+        
         try:
-            requests.post(url, json=data, timeout=10)
+            response = requests.post(url, json=data, timeout=10)
+            print(f"💬 Message sent to {chat_id}, response: {response.status_code}")
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"❌ Error sending message: {e}")
 
 def main(request, response):
     handler = Handler(request, response, {})
