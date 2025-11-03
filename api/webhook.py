@@ -4,7 +4,7 @@ import os
 import requests
 
 BOT_TOKEN = "8191155033:AAHXqDCDxZVfHOhQ16WjGMIvGweFwUueh6M"
-CHANNEL_URL = "https://t.me/SH_Trading_academy"
+CHANNEL_URL = "https://t.me/SH_Tradin_academy"
 PHOTO_URL = "https://ibb.co.com/0RCVWmyb"
 RISK_PHOTO_URL = "https://img.icons8.com/clouds/1000/security-checked.png"
 
